@@ -1,5 +1,8 @@
 mod utils;
 
+use core::fmt;
+use std::f32::consts::PI;
+
 use crate::utils::*;
 use rand::Rng;
 use wasm_bindgen::prelude::*;
@@ -7,8 +10,8 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 #[derive(Clone)]
 pub struct DirectionVector {
-    dx: i32,
-    dy: i32,
+    dx: f32,
+    dy: f32,
 }
 
 #[wasm_bindgen]
@@ -59,7 +62,8 @@ impl Area {
         let int_radius: u32 = RADIUS.round().abs() as u32;
         let x = rand::thread_rng().gen_range(int_radius..self.width - int_radius);
         let y = rand::thread_rng().gen_range(int_radius..self.height - int_radius);
-        let bird: Bird = Bird::new(x, y);
+
+        let bird: Bird = Bird::new(x, y, DirectionVector::random());
         self.birds.push(bird);
     }
 
@@ -83,11 +87,11 @@ impl Area {
 #[wasm_bindgen]
 impl Bird {
     #[wasm_bindgen(constructor)]
-    pub fn new(x: u32, y: u32) -> Bird {
+    pub fn new(x: u32, y: u32, direction: DirectionVector) -> Bird {
         Bird {
             coord_x: x,
             coord_y: y,
-            direction: DirectionVector { dx: 1, dy: 0 },
+            direction: direction,
         }
     }
 
@@ -115,21 +119,52 @@ impl Bird {
             y: (coordy + dy * inv_length * distance) as u32,
         };
     }
+
+    pub fn to_string(&self) -> String {
+        return format!(
+            "[x: {}; y: {}; direction: {}]",
+            self.coord_x,
+            self.coord_y,
+            self.direction.to_string()
+        );
+    }
 }
 
 #[wasm_bindgen]
 impl DirectionVector {
     #[wasm_bindgen(constructor)]
-    pub fn new(dx: i32, dy: i32) -> DirectionVector {
+    pub fn new(dx: f32, dy: f32) -> DirectionVector {
         DirectionVector { dx: dx, dy: dy }
     }
 
-    pub fn dx(&self) -> i32 {
+    pub fn dx(&self) -> f32 {
         return self.dx;
     }
 
-    pub fn dy(&self) -> i32 {
+    pub fn dy(&self) -> f32 {
         return self.dy;
+    }
+
+    pub fn to_string(&self) -> String {
+        return format!("({}, {})", self.dx, self.dy);
+    }
+
+    pub fn random() -> DirectionVector {
+        let dx = rand::thread_rng().gen_range(-1.0..=1.0);
+        let dy = rand::thread_rng().gen_range(-1.0..=1.0);
+        DirectionVector { dx: dx, dy: dy }
+    }
+
+    fn random_vector_between(start_angle: f32, end_angle: f32) -> DirectionVector {
+        let start_angle_mod2pi: f32 = start_angle % 2.0 * PI;
+        let end_angle_mod2pi: f32 = end_angle % 2.0 * PI;
+
+        let rand_angle: f32 = rand::thread_rng().gen_range(start_angle_mod2pi..=end_angle_mod2pi);
+
+        DirectionVector {
+            dx: rand_angle.sin(),
+            dy: rand_angle.tan(),
+        }
     }
 }
 
