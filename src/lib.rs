@@ -1,6 +1,7 @@
 mod utils;
 
 use crate::utils::*;
+use rand::Rng;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -55,7 +56,10 @@ impl Area {
     }
 
     pub fn add_bird(&mut self) {
-        let bird: Bird = Bird::new(100, 100);
+        let int_radius: u32 = RADIUS.round().abs() as u32;
+        let x = rand::thread_rng().gen_range(int_radius..self.width - int_radius);
+        let y = rand::thread_rng().gen_range(int_radius..self.height - int_radius);
+        let bird: Bird = Bird::new(x, y);
         self.birds.push(bird);
     }
 
@@ -69,6 +73,10 @@ impl Area {
 
     pub fn get_birds(&self) -> Vec<Bird> {
         return self.birds.to_vec();
+    }
+
+    pub fn nb_birds(&self) -> usize {
+        return self.birds.len();
     }
 }
 

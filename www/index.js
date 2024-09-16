@@ -18,44 +18,43 @@ canvas.width = width;
 const addBirdButton = document.getElementById("add-bird");
 addBirdButton.addEventListener("click", event => {
     addBird();
+    draw();
 });
 
 const ctx = canvas.getContext('2d');
-
-
 
 const addBird = () => {
     area.add_bird();
 }
 
 const draw = () => {
-    console.log("draw !")
+    console.log("number of birds : " + area.nb_birds())
 
-    area.add_bird(new Bird(100, 100))
-    // list = area.get_birds();
-    area.get_birds().forEach(bird => {
+    ctx.reset();
 
-        ctx.fillStyle = ORANGE;
-        ctx.ellipse(bird.coord_x(), bird.coord_y(), radius, radius, 0, 0, 2 * Math.PI)
-        ctx.fill()
-
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = RED;
-        ctx.beginPath();
-        ctx.moveTo(bird.coord_x(), bird.coord_y());
-        ctx.lineTo(bird.direction_line_stop().x(), bird.direction_line_stop().y());
-        ctx.stroke();
-
-        ctx.fillStyle = BLACK;
-        ctx.ellipse(bird.coord_x(), bird.coord_y(), 5, 5, 0, 0, 2 * Math.PI)
-        ctx.fill()
+    area.get_birds().forEach((bird, index) => {
+        drawBird(ctx, bird)
+        console.log(`bird ${index}`)
     })
-    // console.log(list[0].width())
-    console.log("end of draw")
-
 }
 
 const drawBird = (ctx, bird) => {
+    ctx.fillStyle = ORANGE;
+    ctx.ellipse(bird.coord_x(), bird.coord_y(), radius, radius, 0, 0, 2 * Math.PI);
+    ctx.fill();
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = RED;
+    ctx.beginPath();
+    ctx.moveTo(bird.coord_x(), bird.coord_y());
+    ctx.lineTo(bird.direction_line_stop().x(), bird.direction_line_stop().y());
+    ctx.stroke();
+
+    ctx.fillStyle = BLACK;
+    ctx.ellipse(bird.coord_x(), bird.coord_y(), 5, 5, 0, 0, 2 * Math.PI);
+    ctx.fill();
+
+    ctx.closePath();
 }
 
 draw();
