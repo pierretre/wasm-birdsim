@@ -12,35 +12,36 @@ use wasm_bindgen::prelude::*;
 pub struct DirectionVector {
     dx: f32,
     dy: f32,
+    rad: f32,
 }
 
 #[wasm_bindgen]
 #[derive(Clone)]
 pub struct Bird {
-    coord_x: u32,
-    coord_y: u32,
+    coord_x: f32,
+    coord_y: f32,
     direction: DirectionVector,
 }
 
 #[wasm_bindgen]
 pub struct Area {
-    width: u32,
-    height: u32,
+    width: f32,
+    height: f32,
     birds: Vec<Bird>,
 }
 
 #[wasm_bindgen]
 pub struct Point {
-    x: u32,
-    y: u32,
+    x: f32,
+    y: f32,
 }
 
 #[wasm_bindgen]
 impl Area {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Area {
-        let width = 1000;
-        let height = 800;
+        let width = 1000.0;
+        let height = 800.0;
         let birds = Vec::new();
 
         Area {
@@ -50,16 +51,16 @@ impl Area {
         }
     }
 
-    pub fn width(&self) -> u32 {
+    pub fn width(&self) -> f32 {
         self.width
     }
 
-    pub fn height(&self) -> u32 {
+    pub fn height(&self) -> f32 {
         self.height
     }
 
     pub fn add_bird(&mut self) {
-        let int_radius: u32 = RADIUS.round().abs() as u32;
+        let int_radius: f32 = RADIUS.round().abs();
         let x = rand::thread_rng().gen_range(int_radius..self.width - int_radius);
         let y = rand::thread_rng().gen_range(int_radius..self.height - int_radius);
 
@@ -68,11 +69,13 @@ impl Area {
     }
 
     pub fn tick(&mut self) {
-        let mut birds = self.birds.to_vec();
-
-        // Do the math here !!
-
-        self.birds = birds
+        let mut tmp = vec![];
+        for bird in &mut self.birds {
+            let mut b = bird.clone();
+            b.fly();
+            tmp.push(b);
+        }
+        self.birds = tmp;
     }
 
     pub fn get_birds(&self) -> Vec<Bird> {
@@ -87,7 +90,7 @@ impl Area {
 #[wasm_bindgen]
 impl Bird {
     #[wasm_bindgen(constructor)]
-    pub fn new(x: u32, y: u32, direction: DirectionVector) -> Bird {
+    pub fn new(x: f32, y: f32, direction: DirectionVector) -> Bird {
         Bird {
             coord_x: x,
             coord_y: y,
@@ -95,29 +98,27 @@ impl Bird {
         }
     }
 
-    pub fn coord_x(&self) -> u32 {
+    pub fn coord_x(&self) -> f32 {
         return self.coord_x;
     }
-    pub fn coord_y(&self) -> u32 {
+
+    pub fn coord_y(&self) -> f32 {
         return self.coord_y;
     }
+
     pub fn direction(&self) -> DirectionVector {
         return self.direction.clone();
     }
 
+    pub fn fly(&mut self) {
+        self.direction.randomize_in_range();
+    }
+
     pub fn direction_line_stop(&self) -> Point {
-        let distance: f32 = RADIUS; // arbitrary value to set
-
-        let dx = self.direction.dx as f32;
-        let dy = self.direction.dy as f32;
-        let coordx = self.coord_x as f32;
-        let coordy = self.coord_y as f32;
-
-        let inv_length = fast_inv_sqrt(dx.powi(2) + dy.powi(2));
-        return Point {
-            x: (coordx + dx * inv_length * distance) as u32,
-            y: (coordy + dy * inv_length * distance) as u32,
-        };
+        Point {
+            x: self.coord_x + self.direction.norm_cos(),
+            y: self.coord_y + self.direction.norm_sin(),
+        }
     }
 
     pub fn to_string(&self) -> String {
@@ -132,11 +133,6 @@ impl Bird {
 
 #[wasm_bindgen]
 impl DirectionVector {
-    #[wasm_bindgen(constructor)]
-    pub fn new(dx: f32, dy: f32) -> DirectionVector {
-        DirectionVector { dx: dx, dy: dy }
-    }
-
     pub fn dx(&self) -> f32 {
         return self.dx;
     }
@@ -145,41 +141,66 @@ impl DirectionVector {
         return self.dy;
     }
 
+    pub fn rad(&self) -> f32 {
+        return self.rad;
+    }
+
     pub fn to_string(&self) -> String {
         return format!("({}, {})", self.dx, self.dy);
     }
 
     pub fn random() -> DirectionVector {
-        let dx = rand::thread_rng().gen_range(-1.0..=1.0);
-        let dy = rand::thread_rng().gen_range(-1.0..=1.0);
-        DirectionVector { dx: dx, dy: dy }
+        let rand_angle: f32 = rand::thread_rng().gen_range(0.0..=2.0 * PI);
+        DirectionVector {
+            dx: rand_angle.cos(),
+            dy: rand_angle.sin(),
+            rad: rand_angle,
+        }
     }
 
-    fn random_vector_between(start_angle: f32, end_angle: f32) -> DirectionVector {
-        let start_angle_mod2pi: f32 = start_angle % 2.0 * PI;
-        let end_angle_mod2pi: f32 = end_angle % 2.0 * PI;
+    pub fn cos(&self) -> f32 {
+        self.rad.cos()
+    }
 
-        let rand_angle: f32 = rand::thread_rng().gen_range(start_angle_mod2pi..=end_angle_mod2pi);
+    pub fn sin(&self) -> f32 {
+        self.rad.sin()
+    }
 
-        DirectionVector {
-            dx: rand_angle.sin(),
-            dy: rand_angle.tan(),
-        }
+    pub fn norm_cos(&self) -> f32 {
+        self.cos() * RADIUS
+    }
+
+    pub fn norm_sin(&self) -> f32 {
+        self.sin() * RADIUS
+    }
+
+    pub fn randomize_in_range(&mut self) {
+        let half_angle = MAX_ANGLE / 2.0;
+        let rand_angle_offset: f32 = rand::thread_rng().gen_range(-half_angle..=half_angle);
+        let rand_angle = self.rad + rand_angle_offset;
+
+        self.dx = rand_angle.cos();
+        self.dy = rand_angle.sin();
+        self.rad = rand_angle;
+    }
+
+    fn to_angle(&self) -> f32 {
+        self.dx.atan2(self.dy)
     }
 }
 
 #[wasm_bindgen]
 impl Point {
     #[wasm_bindgen(constructor)]
-    pub fn new(x: u32, y: u32) -> Point {
+    pub fn new(x: f32, y: f32) -> Point {
         Point { x: x, y: y }
     }
 
-    pub fn x(&self) -> u32 {
+    pub fn x(&self) -> f32 {
         return self.x;
     }
 
-    pub fn y(&self) -> u32 {
+    pub fn y(&self) -> f32 {
         return self.y;
     }
 }
