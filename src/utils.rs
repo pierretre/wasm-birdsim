@@ -16,6 +16,8 @@ pub fn set_panic_hook() {
 pub const RADIUS: f32 = 50.0;
 pub const MAX_ANGLE: f32 = PI / 4.0;
 pub const SPEED: f32 = 10.0;
+pub const HORIZONTAL_BOUNCE: f32 = 1.0;
+pub const VERTICAL_BOUNCE: f32 = 2.0;
 
 pub fn fast_inv_sqrt(x: f32) -> f32 {
     let i = x.to_bits();

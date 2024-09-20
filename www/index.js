@@ -8,7 +8,7 @@ const BLACK = 'black';
 const area = new Area();
 const width = area.width();
 const height = area.height();
-const radius = bird_radius();
+const radius = area.bird_radius();
 
 const canvas = document.getElementById("canva");
 canvas.height = height;
@@ -69,7 +69,6 @@ function drawBird(bird) {
     ctx.closePath();
 }
 
-// Appelle `renderLoop` toutes les 66.66ms (~15 FPS)
 setInterval(() => {
     requestAnimationFrame(renderLoop);
-}, 1000 / 5);
+}, 1000 / 10);

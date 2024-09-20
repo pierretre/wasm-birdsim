@@ -1,7 +1,7 @@
 mod utils;
 
 use core::fmt;
-use std::f32::consts::PI;
+use std::{f32::consts::PI, ops::Deref};
 
 use crate::utils::*;
 use rand::Rng;
@@ -69,21 +69,34 @@ impl Area {
     }
 
     pub fn tick(&mut self) {
+        let birds_clone = self.birds.clone();
         let mut tmp = vec![];
-        for bird in &mut self.birds {
-            let mut b = bird.clone();
-            b.fly();
-            tmp.push(b);
+        for (i, bird) in self.birds.iter_mut().enumerate() {
+            let pt: Point = bird.direction_line_stop();
+
+            if pt.x < 0.0 || pt.x >= self.width {
+                bird.wall_bounce(HORIZONTAL_BOUNCE);
+            } else if pt.y < 0.0 || pt.y >= self.height {
+                bird.wall_bounce(VERTICAL_BOUNCE);
+            } else {
+                bird.fly();
+            }
+            tmp.push(bird.clone());
         }
+
         self.birds = tmp;
     }
 
     pub fn get_birds(&self) -> Vec<Bird> {
-        return self.birds.to_vec();
+        self.birds.to_vec()
     }
 
     pub fn nb_birds(&self) -> usize {
-        return self.birds.len();
+        self.birds.len()
+    }
+
+    pub fn bird_radius(&self) -> f32 {
+        RADIUS
     }
 }
 
@@ -99,19 +112,15 @@ impl Bird {
     }
 
     pub fn coord_x(&self) -> f32 {
-        return self.coord_x;
+        self.coord_x
     }
 
     pub fn coord_y(&self) -> f32 {
-        return self.coord_y;
+        self.coord_y
     }
 
     pub fn direction(&self) -> DirectionVector {
-        return self.direction.clone();
-    }
-
-    pub fn fly(&mut self) {
-        self.direction.randomize_in_range();
+        self.direction.clone()
     }
 
     pub fn direction_line_stop(&self) -> Point {
@@ -122,31 +131,47 @@ impl Bird {
     }
 
     pub fn to_string(&self) -> String {
-        return format!(
+        format!(
             "[x: {}; y: {}; direction: {}]",
             self.coord_x,
             self.coord_y,
             self.direction.to_string()
-        );
+        )
+    }
+
+    fn fly(&mut self) {
+        self.direction.randomize_in_range();
+        self.update_coordinates();
+    }
+
+    fn wall_bounce(&mut self, fact: f32) {
+        self.direction.invert(fact);
+        self.direction.randomize_in_range();
+        self.update_coordinates();
+    }
+
+    fn update_coordinates(&mut self) {
+        self.coord_x += self.direction.cos() * SPEED;
+        self.coord_y += self.direction.sin() * SPEED;
     }
 }
 
 #[wasm_bindgen]
 impl DirectionVector {
     pub fn dx(&self) -> f32 {
-        return self.dx;
+        self.dx
     }
 
     pub fn dy(&self) -> f32 {
-        return self.dy;
+        self.dy
     }
 
     pub fn rad(&self) -> f32 {
-        return self.rad;
+        self.rad
     }
 
     pub fn to_string(&self) -> String {
-        return format!("({}, {})", self.dx, self.dy);
+        format!("({}, {})", self.dx, self.dy)
     }
 
     pub fn random() -> DirectionVector {
@@ -184,8 +209,8 @@ impl DirectionVector {
         self.rad = rand_angle;
     }
 
-    fn to_angle(&self) -> f32 {
-        self.dx.atan2(self.dy)
+    fn invert(&mut self, fact: f32) {
+        self.rad = fact * PI - self.rad
     }
 }
 
@@ -203,13 +228,4 @@ impl Point {
     pub fn y(&self) -> f32 {
         return self.y;
     }
-}
-
-#[wasm_bindgen]
-pub fn bird_radius() -> f32 {
-    return RADIUS;
-}
-#[wasm_bindgen]
-pub fn max_angle() -> f32 {
-    return MAX_ANGLE;
 }
