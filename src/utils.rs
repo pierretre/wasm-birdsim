@@ -1,6 +1,7 @@
 use std::f32::consts::PI;
 
 use crate::DirectionVector;
+use web_sys;
 
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -24,4 +25,8 @@ pub fn fast_inv_sqrt(x: f32) -> f32 {
     let i = 0x5f3759df - (i >> 1);
     let y = f32::from_bits(i);
     y * (1.5 - 0.5 * x * y * y)
+}
+
+pub fn wasm_log(str: String) {
+    web_sys::console::log_1(&str.into());
 }
