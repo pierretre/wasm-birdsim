@@ -14,9 +14,10 @@ pub fn set_panic_hook() {
     console_error_panic_hook::set_once();
 }
 
-pub const RADIUS: f32 = 50.0;
+pub const RADIUS: f32 = 200.0;
 pub const MAX_ANGLE: f32 = PI / 4.0;
-pub const SPEED: f32 = 10.0;
+pub const SPEED: f32 = 2.0;
+pub const SPEED_MULTIPLIER: f32 = 1.1;
 pub const HORIZONTAL_BOUNCE: f32 = 1.0;
 pub const VERTICAL_BOUNCE: f32 = 2.0;
 

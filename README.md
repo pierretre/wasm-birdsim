@@ -82,3 +82,8 @@ Unless you explicitly state otherwise, any contribution intentionally
 submitted for inclusion in the work by you, as defined in the Apache-2.0
 license, shall be dual licensed as above, without any additional terms or
 conditions.
+
+## The project
+![alt text](image.png)
+
+from : [http://www.red3d.com/cwr/boids/](http://www.red3d.com/cwr/boids/)

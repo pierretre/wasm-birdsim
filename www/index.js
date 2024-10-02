@@ -64,7 +64,7 @@ function drawBird(bird) {
 
     ctx.beginPath()
     ctx.fillStyle = BLACK;
-    ctx.ellipse(birdx, birdy, 5, 5, 0, 0, 2 * Math.PI);
+    ctx.ellipse(birdx, birdy, 1, 1, 0, 0, 2 * Math.PI);
     ctx.fill();
     ctx.closePath();
 }
