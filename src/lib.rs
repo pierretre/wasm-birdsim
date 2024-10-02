@@ -1,10 +1,8 @@
 mod utils;
 
-use core::fmt;
-use std::{f32::consts::PI, ops::Deref};
-
 use crate::utils::*;
 use rand::Rng;
+use std::f32::consts::PI;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -21,6 +19,13 @@ pub struct Bird {
     coord_x: f32,
     coord_y: f32,
     direction: DirectionVector,
+    neighbors_indices: Vec<usize>,
+}
+
+struct NeighborInfo {
+    bird_id: usize,
+    direction: DirectionVector,
+    distance: f32,
 }
 
 #[wasm_bindgen]
@@ -69,22 +74,72 @@ impl Area {
     }
 
     pub fn tick(&mut self) {
-        let birds_clone = self.birds.clone();
+        let n = self.nb_birds();
         let mut tmp = vec![];
-        for (i, bird) in self.birds.iter_mut().enumerate() {
-            let pt: Point = bird.direction_line_stop();
+        let mut tmp_birds = self.birds.clone(); // Clone les oiseaux pour éviter des conflits de mutabilité
 
-            if pt.x < 0.0 || pt.x >= self.width {
-                bird.wall_bounce(HORIZONTAL_BOUNCE);
-            } else if pt.y < 0.0 || pt.y >= self.height {
-                bird.wall_bounce(VERTICAL_BOUNCE);
-            } else {
-                bird.fly();
-            }
+        for i in 0..n {
+            let mut bird = tmp_birds[i].clone();
+            self.handle_bird_movement(i, &mut bird, &tmp_birds);
             tmp.push(bird.clone());
         }
 
-        self.birds = tmp;
+        self.birds = tmp; // Remplace les oiseaux par ceux mis à jour
+    }
+
+    fn handle_bird_movement(&mut self, i: usize, bird: &mut Bird, tmp_birds: &[Bird]) {
+        let pt: Point = bird.direction_line_stop();
+
+        if pt.x < 0.0 || pt.x >= self.width {
+            bird.wall_bounce(HORIZONTAL_BOUNCE);
+        } else if pt.y < 0.0 || pt.y >= self.height {
+            bird.wall_bounce(VERTICAL_BOUNCE);
+        } else {
+            // Mise à jour des voisins et ajustement de la direction
+            let neighbors = self.update_neighbors(i, bird, tmp_birds);
+            let average_direction = self.compute_average_direction(&neighbors);
+
+            bird.set_direction(DirectionVector::from_rad(average_direction));
+            bird.fly();
+        }
+    }
+
+    fn update_neighbors(&self, i: usize, bird: &mut Bird, tmp_birds: &[Bird]) -> Vec<NeighborInfo> {
+        let mut neighbors = Vec::new();
+        let mut sum_directions = 0.0;
+
+        for (j, bird_j) in tmp_birds.iter().enumerate() {
+            if i != j {
+                let distance = bird.distance_to(bird_j);
+
+                if distance <= RADIUS {
+                    bird.add_neighbor(j); // Ajoute l'ID du voisin
+                    neighbors.push(NeighborInfo {
+                        bird_id: j,
+                        direction: bird_j.direction(),
+                        distance,
+                    });
+
+                    sum_directions += bird_j.direction().rad();
+                }
+            }
+        }
+
+        neighbors
+    }
+
+    fn compute_average_direction(&self, neighbors: &[NeighborInfo]) -> f32 {
+        let mut sum_directions = 0.0;
+
+        for neighbor in neighbors {
+            sum_directions += neighbor.direction.rad();
+        }
+
+        if neighbors.len() > 0 {
+            sum_directions / (neighbors.len() as f32)
+        } else {
+            0.0 // Par défaut si pas de voisins
+        }
     }
 
     pub fn get_birds(&self) -> Vec<Bird> {
@@ -104,10 +159,12 @@ impl Area {
 impl Bird {
     #[wasm_bindgen(constructor)]
     pub fn new(x: f32, y: f32, direction: DirectionVector) -> Bird {
+        let neighbors = vec![];
         Bird {
             coord_x: x,
             coord_y: y,
-            direction: direction,
+            direction,
+            neighbors_indices: neighbors,
         }
     }
 
@@ -121,6 +178,10 @@ impl Bird {
 
     pub fn direction(&self) -> DirectionVector {
         self.direction.clone()
+    }
+
+    fn set_direction(&mut self, direction: DirectionVector) {
+        self.direction = direction;
     }
 
     pub fn direction_line_stop(&self) -> Point {
@@ -139,6 +200,13 @@ impl Bird {
         )
     }
 
+    fn distance_to(&self, other: &Bird) -> f32 {
+        let x_diff = self.coord_x - other.coord_x;
+        let y_diff = self.coord_y - other.coord_y;
+
+        (x_diff.powi(2) + y_diff.powi(2)).sqrt()
+    }
+
     fn fly(&mut self) {
         self.direction.randomize_in_range();
         self.update_coordinates();
@@ -154,10 +222,26 @@ impl Bird {
         self.coord_x += self.direction.cos() * SPEED;
         self.coord_y += self.direction.sin() * SPEED;
     }
+
+    fn reset_neighbors(&mut self) {
+        self.neighbors_indices = vec![];
+    }
+
+    fn add_neighbor(&mut self, index: usize) {
+        self.neighbors_indices.push(index);
+    }
 }
 
 #[wasm_bindgen]
 impl DirectionVector {
+    fn from_rad(rad: f32) -> DirectionVector {
+        DirectionVector {
+            dx: rad.cos(),
+            dy: rad.sin(),
+            rad,
+        }
+    }
+
     pub fn dx(&self) -> f32 {
         self.dx
     }
@@ -167,7 +251,7 @@ impl DirectionVector {
     }
 
     pub fn rad(&self) -> f32 {
-        self.rad
+        self.rad % (2.0 * PI)
     }
 
     pub fn to_string(&self) -> String {
@@ -201,8 +285,13 @@ impl DirectionVector {
 
     pub fn randomize_in_range(&mut self) {
         let half_angle = MAX_ANGLE / 2.0;
-        let rand_angle_offset: f32 = rand::thread_rng().gen_range(-half_angle..=half_angle);
-        let rand_angle = self.rad + rand_angle_offset;
+        let nb: f32 = rand::thread_rng().gen_range(0.0..=1.1);
+        let sign = if rand::thread_rng().gen_bool(0.5) {
+            -1
+        } else {
+            1
+        };
+        let rand_angle = self.rad + (nb.powi(2) * half_angle * sign as f32);
 
         self.dx = rand_angle.cos();
         self.dy = rand_angle.sin();
@@ -218,14 +307,14 @@ impl DirectionVector {
 impl Point {
     #[wasm_bindgen(constructor)]
     pub fn new(x: f32, y: f32) -> Point {
-        Point { x: x, y: y }
+        Point { x, y }
     }
 
     pub fn x(&self) -> f32 {
-        return self.x;
+        self.x
     }
 
     pub fn y(&self) -> f32 {
-        return self.y;
+        self.y
     }
 }
