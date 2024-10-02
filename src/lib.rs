@@ -3,7 +3,7 @@ mod utils;
 use crate::utils::*;
 use rand::Rng;
 use std::f32::consts::PI;
-use wasm_bindgen::prelude::*;
+use wasm_bindgen::{convert::IntoWasmAbi, prelude::*};
 
 #[wasm_bindgen]
 #[derive(Clone)]
@@ -95,7 +95,7 @@ impl Area {
             bird.wall_bounce(VERTICAL_BOUNCE);
         } else {
             let neighbors = self.update_neighbors(i, bird, tmp_birds);
-            if neighbors.len() > 0 {
+            if neighbors.len() > 1 {
                 let average_direction = self.compute_average_direction(&neighbors);
                 bird.set_direction(DirectionVector::from_rad(average_direction));
             }
@@ -107,17 +107,17 @@ impl Area {
         let mut neighbors = vec![];
 
         for (j, bird_j) in tmp_birds.iter().enumerate() {
-            if i != j {
-                let distance = bird.distance_to(bird_j);
+            // if i != j {
+            let distance = bird.distance_to(bird_j);
 
-                if distance <= RADIUS {
-                    neighbors.push(NeighborInfo {
-                        bird_id: j,
-                        direction: bird_j.direction(),
-                        distance,
-                    });
-                }
+            if distance <= RADIUS {
+                neighbors.push(NeighborInfo {
+                    bird_id: j,
+                    direction: bird_j.direction(),
+                    distance,
+                });
             }
+            // }
         }
         neighbors
     }
