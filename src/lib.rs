@@ -19,7 +19,6 @@ pub struct Bird {
     coord_x: f32,
     coord_y: f32,
     direction: DirectionVector,
-    neighbors_indices: Vec<usize>,
 }
 
 struct NeighborInfo {
@@ -76,7 +75,7 @@ impl Area {
     pub fn tick(&mut self) {
         let n = self.nb_birds();
         let mut tmp = vec![];
-        let mut tmp_birds = self.birds.clone(); // Clone les oiseaux pour éviter des conflits de mutabilité
+        let mut tmp_birds = self.birds.clone();
 
         for i in 0..n {
             let mut bird = tmp_birds[i].clone();
@@ -84,7 +83,7 @@ impl Area {
             tmp.push(bird.clone());
         }
 
-        self.birds = tmp; // Remplace les oiseaux par ceux mis à jour
+        self.birds = tmp;
     }
 
     fn handle_bird_movement(&mut self, i: usize, bird: &mut Bird, tmp_birds: &[Bird]) {
@@ -95,36 +94,31 @@ impl Area {
         } else if pt.y < 0.0 || pt.y >= self.height {
             bird.wall_bounce(VERTICAL_BOUNCE);
         } else {
-            // Mise à jour des voisins et ajustement de la direction
             let neighbors = self.update_neighbors(i, bird, tmp_birds);
-            let average_direction = self.compute_average_direction(&neighbors);
-
-            bird.set_direction(DirectionVector::from_rad(average_direction));
+            if neighbors.len() > 0 {
+                let average_direction = self.compute_average_direction(&neighbors);
+                bird.set_direction(DirectionVector::from_rad(average_direction));
+            }
             bird.fly();
         }
     }
 
     fn update_neighbors(&self, i: usize, bird: &mut Bird, tmp_birds: &[Bird]) -> Vec<NeighborInfo> {
-        let mut neighbors = Vec::new();
-        let mut sum_directions = 0.0;
+        let mut neighbors = vec![];
 
         for (j, bird_j) in tmp_birds.iter().enumerate() {
             if i != j {
                 let distance = bird.distance_to(bird_j);
 
                 if distance <= RADIUS {
-                    bird.add_neighbor(j); // Ajoute l'ID du voisin
                     neighbors.push(NeighborInfo {
                         bird_id: j,
                         direction: bird_j.direction(),
                         distance,
                     });
-
-                    sum_directions += bird_j.direction().rad();
                 }
             }
         }
-
         neighbors
     }
 
@@ -135,11 +129,7 @@ impl Area {
             sum_directions += neighbor.direction.rad();
         }
 
-        if neighbors.len() > 0 {
-            sum_directions / (neighbors.len() as f32)
-        } else {
-            0.0 // Par défaut si pas de voisins
-        }
+        sum_directions / (neighbors.len() as f32) % (2.0 * PI)
     }
 
     pub fn get_birds(&self) -> Vec<Bird> {
@@ -159,12 +149,10 @@ impl Area {
 impl Bird {
     #[wasm_bindgen(constructor)]
     pub fn new(x: f32, y: f32, direction: DirectionVector) -> Bird {
-        let neighbors = vec![];
         Bird {
             coord_x: x,
             coord_y: y,
             direction,
-            neighbors_indices: neighbors,
         }
     }
 
@@ -221,14 +209,6 @@ impl Bird {
     fn update_coordinates(&mut self) {
         self.coord_x += self.direction.cos() * SPEED;
         self.coord_y += self.direction.sin() * SPEED;
-    }
-
-    fn reset_neighbors(&mut self) {
-        self.neighbors_indices = vec![];
-    }
-
-    fn add_neighbor(&mut self, index: usize) {
-        self.neighbors_indices.push(index);
     }
 }
 
